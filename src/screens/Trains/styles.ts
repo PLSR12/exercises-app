@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     paddingBottom: 24,
@@ -79,6 +82,9 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#0f172a",
+  },
+  scrollContent: {
+    paddingBottom: 140,
   },
   linkButton: {
     paddingVertical: 6,

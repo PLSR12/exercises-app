@@ -1,14 +1,14 @@
-export type TrainingContext = 'A' | 'B' | 'C'
+export type TrainingContext = string;
 
 export interface Exercise {
-  name: string
-  reps: number | null
-  series: number | null
-  weightActual: number | null
-  weightBefore: number | null
-  observations: string
+  name: string;
+  reps: number | null;
+  series: number | null;
+  weightActual: number | null;
+  weightBefore: number | null;
+  observations: string;
 }
 
 export interface TrainingForm {
-  trains: Exercise[]
+  trains: Exercise[];
 }

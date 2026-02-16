@@ -3,18 +3,21 @@ import React from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   Share,
   Text,
+  TextInput,
+  TouchableWithoutFeedback,
   View,
+  Platform,
 } from "react-native";
 import { TrainingContext, TrainingForm } from "../../types/training";
 import { styles } from "./styles";
 
-const contexts: TrainingContext[] = ["A", "B", "C"];
-
-type TrainingDataMap = Record<TrainingContext, TrainingForm>;
+type TrainingDataMap = Record<string, TrainingForm>;
 
 type ContextSummary = {
   context: TrainingContext;
@@ -24,22 +27,35 @@ type ContextSummary = {
   volume: number;
 };
 
-const emptyData = (): TrainingDataMap => ({
-  A: { trains: [] },
-  B: { trains: [] },
-  C: { trains: [] },
-});
+const emptyData = (ctxs: TrainingContext[]): TrainingDataMap =>
+  ctxs.reduce((acc, ctx) => {
+    acc[ctx] = { trains: [] };
+    return acc;
+  }, {} as TrainingDataMap);
 
-export function DashboardScreen() {
+interface Props {
+  contexts: TrainingContext[];
+}
+
+export function DashboardScreen({ contexts }: Props) {
   const [loading, setLoading] = React.useState(true);
-  const [data, setData] = React.useState<TrainingDataMap>(emptyData);
+  const [data, setData] = React.useState<TrainingDataMap>(() =>
+    emptyData(contexts),
+  );
+  const [showImport, setShowImport] = React.useState(false);
+  const [importText, setImportText] = React.useState("");
 
   const loadAll = React.useCallback(async () => {
+    if (!contexts.length) {
+      setData({});
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const keys = contexts.map((ctx) => `trains-${ctx}`);
       const stored = await AsyncStorage.multiGet(keys);
-      const next = emptyData();
+      const next = emptyData(contexts);
 
       stored.forEach(([key, value]) => {
         if (!key || !value) return;
@@ -59,11 +75,15 @@ export function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [contexts]);
 
   React.useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  React.useEffect(() => {
+    setData(emptyData(contexts));
+  }, [contexts]);
 
   const summaries = React.useMemo(() => {
     const perContext: ContextSummary[] = contexts.map((ctx) => {
@@ -73,8 +93,9 @@ export function DashboardScreen() {
       const reps = trains.reduce((acc, item) => acc + (item.reps ?? 0), 0);
       const volume = trains.reduce(
         (acc, item) =>
-          acc + (item.series ?? 0) * (item.reps ?? 0) * (item.weightActual ?? 0),
-        0
+          acc +
+          (item.series ?? 0) * (item.reps ?? 0) * (item.weightActual ?? 0),
+        0,
       );
 
       return { context: ctx, exercises, series, reps, volume };
@@ -88,11 +109,11 @@ export function DashboardScreen() {
         acc.volume += item.volume;
         return acc;
       },
-      { exercises: 0, series: 0, reps: 0, volume: 0 }
+      { exercises: 0, series: 0, reps: 0, volume: 0 },
     );
 
     return { perContext, totals };
-  }, [data]);
+  }, [data, contexts]);
 
   const handleExport = React.useCallback(async () => {
     try {
@@ -111,6 +132,46 @@ export function DashboardScreen() {
     }
   }, [data]);
 
+  const handleImport = React.useCallback(async () => {
+    try {
+      const parsed = JSON.parse(importText || "{}");
+      const source: Partial<TrainingDataMap> = parsed.trains ?? parsed;
+
+      const next = emptyData(contexts);
+      contexts.forEach((ctx) => {
+        const ctxData = source?.[ctx];
+        if (ctxData && Array.isArray(ctxData.trains)) {
+          next[ctx] = {
+            trains: ctxData.trains.map((item) => ({
+              name: item.name ?? "",
+              reps: item.reps ?? null,
+              series: item.series ?? null,
+              weightActual: item.weightActual ?? null,
+              weightBefore: item.weightBefore ?? null,
+              observations: item.observations ?? "",
+            })),
+          };
+        }
+      });
+
+      const entries = contexts.map(
+        (ctx) => [`trains-${ctx}`, JSON.stringify(next[ctx])] as const,
+      );
+
+      await AsyncStorage.multiSet(entries);
+      setData(next);
+      setShowImport(false);
+      setImportText("");
+      Alert.alert("Sucesso", "Treinos importados");
+    } catch (error) {
+      console.warn("Erro ao importar treinos", error);
+      Alert.alert(
+        "Erro",
+        "JSON invalido. Verifique o formato e tente novamente",
+      );
+    }
+  }, [importText]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -126,8 +187,12 @@ export function DashboardScreen() {
 
       <View style={styles.summaryGrid}>
         <View style={[styles.summaryCard, styles.primaryCard]}>
-          <Text style={styles.summaryLabel}>Exercicios</Text>
-          <Text style={styles.summaryValue}>{summaries.totals.exercises}</Text>
+          <Text style={[styles.summaryLabel, styles.summaryLabelOnPrimary]}>
+            Exercicios
+          </Text>
+          <Text style={[styles.summaryValue, styles.summaryValueOnPrimary]}>
+            {summaries.totals.exercises}
+          </Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Series</Text>
@@ -169,7 +234,9 @@ export function DashboardScreen() {
               </View>
               <View style={styles.statPill}>
                 <Text style={styles.statLabel}>Carga</Text>
-                <Text style={styles.statValue}>{Math.round(item.volume)} kg</Text>
+                <Text style={styles.statValue}>
+                  {Math.round(item.volume)} kg
+                </Text>
               </View>
             </View>
           </View>
@@ -184,6 +251,12 @@ export function DashboardScreen() {
           <Text style={styles.actionButtonText}>Atualizar</Text>
         </Pressable>
         <Pressable
+          style={[styles.actionButton, styles.secondaryButton]}
+          onPress={() => setShowImport(true)}
+        >
+          <Text style={styles.actionButtonText}>Importar treinos</Text>
+        </Pressable>
+        <Pressable
           style={[styles.actionButton, styles.primaryButton]}
           onPress={handleExport}
         >
@@ -192,6 +265,73 @@ export function DashboardScreen() {
           </Text>
         </Pressable>
       </View>
+
+      {showImport && (
+        <View style={styles.importOverlay} pointerEvents="box-none">
+          <TouchableWithoutFeedback
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowImport(false);
+              setImportText("");
+            }}
+          >
+            <View style={styles.importScrim} />
+          </TouchableWithoutFeedback>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+            style={styles.importCardWrapper}
+          >
+            <ScrollView
+              contentContainerStyle={styles.importCardContainer}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.importCard}>
+                <Text style={styles.importTitle}>Importar treinos</Text>
+                <Text style={styles.importHint}>
+                  Cole aqui o JSON exportado (contendo o objeto "trains" com A,
+                  B e C).
+                </Text>
+                <TextInput
+                  multiline
+                  numberOfLines={8}
+                  value={importText}
+                  onChangeText={setImportText}
+                  placeholder='{ "trains": { "A": { "trains": [...] }, ... } }'
+                  style={styles.importInput}
+                  textAlignVertical="top"
+                />
+
+                <View style={styles.importActions}>
+                  <Pressable
+                    style={[styles.actionButton, styles.secondaryButton]}
+                    onPress={() => {
+                      setShowImport(false);
+                      setImportText("");
+                    }}
+                  >
+                    <Text style={styles.actionButtonText}>Cancelar</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.actionButton, styles.primaryButton]}
+                    onPress={handleImport}
+                  >
+                    <Text
+                      style={[
+                        styles.actionButtonText,
+                        styles.primaryButtonText,
+                      ]}
+                    >
+                      Importar
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      )}
     </View>
   );
 }
