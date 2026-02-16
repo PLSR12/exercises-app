@@ -27,6 +27,14 @@ type ContextSummary = {
   volume: number;
 };
 
+type ProgressSummary = {
+  context: TrainingContext;
+  improved: number;
+  regressed: number;
+  unchanged: number;
+  avgDelta: number;
+};
+
 const emptyData = (ctxs: TrainingContext[]): TrainingDataMap =>
   ctxs.reduce((acc, ctx) => {
     acc[ctx] = { trains: [] };
@@ -85,35 +93,109 @@ export function DashboardScreen({ contexts }: Props) {
     setData(emptyData(contexts));
   }, [contexts]);
 
-  const summaries = React.useMemo(() => {
-    const perContext: ContextSummary[] = contexts.map((ctx) => {
-      const trains = data[ctx]?.trains ?? [];
-      const exercises = trains.length;
-      const series = trains.reduce((acc, item) => acc + (item.series ?? 0), 0);
-      const reps = trains.reduce((acc, item) => acc + (item.reps ?? 0), 0);
-      const volume = trains.reduce(
-        (acc, item) =>
-          acc +
-          (item.series ?? 0) * (item.reps ?? 0) * (item.weightActual ?? 0),
-        0,
+  const summaryStats = React.useMemo(() => {
+    const contextBreakdown: ContextSummary[] = contexts.map((contextId) => {
+      const trains = data[contextId]?.trains ?? [];
+      const aggregate = trains.reduce(
+        (acc, session) => {
+          const series = session.series ?? 0;
+          const reps = session.reps ?? 0;
+          const weight = session.weightActual ?? 0;
+
+          acc.series += series;
+          acc.reps += reps;
+          acc.volume += series * reps * weight;
+          return acc;
+        },
+        { series: 0, reps: 0, volume: 0 },
       );
 
-      return { context: ctx, exercises, series, reps, volume };
+      return {
+        context: contextId,
+        exercises: trains.length,
+        series: aggregate.series,
+        reps: aggregate.reps,
+        volume: aggregate.volume,
+      };
     });
 
-    const totals = perContext.reduce(
-      (acc, item) => {
-        acc.exercises += item.exercises;
-        acc.series += item.series;
-        acc.reps += item.reps;
-        acc.volume += item.volume;
+    const overallTotals = contextBreakdown.reduce(
+      (acc, summary) => {
+        acc.exercises += summary.exercises;
+        acc.series += summary.series;
+        acc.reps += summary.reps;
+        acc.volume += summary.volume;
         return acc;
       },
       { exercises: 0, series: 0, reps: 0, volume: 0 },
     );
 
-    return { perContext, totals };
+    return { contextBreakdown, overallTotals };
   }, [data, contexts]);
+
+  const progressStats = React.useMemo(() => {
+    let totalDelta = 0;
+    let totalSessions = 0;
+
+    const contextBreakdown: ProgressSummary[] = contexts.map((contextId) => {
+      const trains = data[contextId]?.trains ?? [];
+      totalSessions += trains.length;
+
+      const metrics = trains.reduce(
+        (acc, session) => {
+          const before = session.weightBefore ?? 0;
+          const actual = session.weightActual ?? before;
+          const delta = actual - before;
+
+          acc.deltaSum += delta;
+          if (delta > 0) acc.improved += 1;
+          else if (delta < 0) acc.regressed += 1;
+          else acc.unchanged += 1;
+
+          return acc;
+        },
+        { improved: 0, regressed: 0, unchanged: 0, deltaSum: 0 },
+      );
+
+      totalDelta += metrics.deltaSum;
+      const avgDelta = trains.length ? metrics.deltaSum / trains.length : 0;
+
+      return {
+        context: contextId,
+        improved: metrics.improved,
+        regressed: metrics.regressed,
+        unchanged: metrics.unchanged,
+        avgDelta,
+      };
+    });
+
+    const overallCounts = contextBreakdown.reduce(
+      (acc, summary) => {
+        acc.improved += summary.improved;
+        acc.regressed += summary.regressed;
+        acc.unchanged += summary.unchanged;
+        return acc;
+      },
+      { improved: 0, regressed: 0, unchanged: 0 },
+    );
+
+    const avgDelta = totalSessions ? totalDelta / totalSessions : 0;
+
+    return {
+      contextBreakdown,
+      overallTotals: { ...overallCounts, avgDelta },
+    };
+  }, [data, contexts]);
+
+  const progressByContext = React.useMemo(() => {
+    return progressStats.contextBreakdown.reduce(
+      (acc, summary) => {
+        acc[summary.context] = summary;
+        return acc;
+      },
+      {} as Record<TrainingContext, ProgressSummary>,
+    );
+  }, [progressStats.contextBreakdown]);
 
   const handleExport = React.useCallback(async () => {
     try {
@@ -191,21 +273,36 @@ export function DashboardScreen({ contexts }: Props) {
             Exercicios
           </Text>
           <Text style={[styles.summaryValue, styles.summaryValueOnPrimary]}>
-            {summaries.totals.exercises}
+            {summaryStats.overallTotals.exercises}
           </Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Series</Text>
-          <Text style={styles.summaryValue}>{summaries.totals.series}</Text>
+          <Text style={styles.summaryValue}>
+            {summaryStats.overallTotals.series}
+          </Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Repeticoes</Text>
-          <Text style={styles.summaryValue}>{summaries.totals.reps}</Text>
+          <Text style={styles.summaryValue}>
+            {summaryStats.overallTotals.reps}
+          </Text>
         </View>
-        <View style={styles.summaryCard}>
+        {/* <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Carga estimada</Text>
           <Text style={styles.summaryValue}>
-            {Math.round(summaries.totals.volume)} kg
+            {Math.round(summaryStats.overallTotals.volume)} kg
+          </Text>
+        </View> */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Evolucao media</Text>
+          <Text style={styles.summaryValue}>
+            {progressStats.overallTotals.avgDelta >= 0 ? "+" : ""}
+            {progressStats.overallTotals.avgDelta.toFixed(1)} kg
+          </Text>
+          <Text style={styles.summaryFootnote}>
+            {progressStats.overallTotals.improved} melhoraram,
+            {progressStats.overallTotals.regressed} reduziram
           </Text>
         </View>
       </View>
@@ -214,33 +311,59 @@ export function DashboardScreen({ contexts }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       >
-        {summaries.perContext.map((item) => (
-          <View key={item.context} style={styles.contextCard}>
-            <View style={styles.contextHeader}>
-              <Text style={styles.contextTitle}>Treino {item.context}</Text>
-              <Text style={styles.contextBadge}>
-                {item.exercises} exercicio{item.exercises === 1 ? "" : "s"}
-              </Text>
-            </View>
+        {summaryStats.contextBreakdown.map((item) => {
+          const contextProgress = progressByContext[item.context];
+          const delta = contextProgress?.avgDelta ?? 0;
 
-            <View style={styles.statRow}>
-              <View style={styles.statPill}>
-                <Text style={styles.statLabel}>Series</Text>
-                <Text style={styles.statValue}>{item.series}</Text>
-              </View>
-              <View style={styles.statPill}>
-                <Text style={styles.statLabel}>Repeticoes</Text>
-                <Text style={styles.statValue}>{item.reps}</Text>
-              </View>
-              <View style={styles.statPill}>
-                <Text style={styles.statLabel}>Carga</Text>
-                <Text style={styles.statValue}>
-                  {Math.round(item.volume)} kg
+          return (
+            <View key={item.context} style={styles.contextCard}>
+              <View style={styles.contextHeader}>
+                <Text style={styles.contextTitle}>Treino {item.context}</Text>
+                <Text style={styles.contextBadge}>
+                  {item.exercises} exercicio{item.exercises === 1 ? "" : "s"}
                 </Text>
               </View>
+
+              <View style={styles.statRow}>
+                <View style={styles.statPill}>
+                  <Text style={styles.statLabel}>Series</Text>
+                  <Text style={styles.statValue}>{item.series}</Text>
+                </View>
+                <View style={styles.statPill}>
+                  <Text style={styles.statLabel}>Repeticoes</Text>
+                  <Text style={styles.statValue}>{item.reps}</Text>
+                </View>
+                <View style={styles.statPill}>
+                  <Text style={styles.statLabel}>Carga</Text>
+                  <Text style={styles.statValue}>
+                    {Math.round(item.volume)} kg
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.progressRow}>
+                <View style={[styles.progressChip, styles.progressUp]}>
+                  <Text style={styles.progressChipLabel}>Melhoraram</Text>
+                  <Text style={styles.progressChipValue}>
+                    {contextProgress?.improved ?? 0}
+                  </Text>
+                </View>
+                <View style={[styles.progressChip, styles.progressDown]}>
+                  <Text style={styles.progressChipLabel}>Regrediram</Text>
+                  <Text style={styles.progressChipValue}>
+                    {contextProgress?.regressed ?? 0}
+                  </Text>
+                </View>
+                <View style={styles.progressChip}>
+                  <Text style={styles.progressChipLabel}>Delta medio</Text>
+                  <Text style={styles.progressChipValue}>
+                    {`${delta >= 0 ? "+" : ""}${delta.toFixed(1)} kg`}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
       <View style={styles.footerRow}>

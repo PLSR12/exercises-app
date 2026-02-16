@@ -5,8 +5,6 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -14,8 +12,8 @@ import {
   View,
 } from "react-native";
 import * as yup from "yup";
-import { Exercise, TrainingContext, TrainingForm } from "../../types/training";
 import { styles } from "./styles";
+import { Exercise, TrainingContext, TrainingForm } from "../../types/training";
 
 const exerciseSchema = yup
   .object({
@@ -141,251 +139,227 @@ export function TrainScreen({ context }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
-    >
-      <View style={styles.container}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Treino {context}</Text>
-          <View style={styles.titleActions}>
-            <Pressable
-              onPress={() => setIsEdit(true)}
-              style={styles.smallButton}
-            >
-              <Text style={styles.smallButtonText}>Editar</Text>
-            </Pressable>
-            <Pressable
-              onPress={addExercise}
-              style={[styles.smallButton, styles.addButton]}
-            >
-              <Text style={[styles.smallButtonText, styles.addButtonText]}>
-                + Adicionar
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {fields.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>Sem exercicios</Text>
-            <Pressable
-              onPress={addExercise}
-              style={[styles.actionButton, styles.primaryButton]}
-            >
-              <Text style={styles.actionButtonText}>Adicionar exercicio</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={
-              Platform.OS === "ios" ? "interactive" : "on-drag"
-            }
-            contentContainerStyle={styles.scrollContent}
+    <View style={styles.container}>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Treino {context}</Text>
+        <View style={styles.titleActions}>
+          <Pressable onPress={() => setIsEdit(true)} style={styles.smallButton}>
+            <Text style={styles.smallButtonText}>Editar</Text>
+          </Pressable>
+          <Pressable
+            onPress={addExercise}
+            style={[styles.smallButton, styles.addButton]}
           >
-            {fields.map((field, index) => {
-              const fieldErrors = (errors.trains && errors.trains[index]) || {};
-              return (
-                <View key={field.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Exercicio {index + 1}</Text>
-                    <Pressable
-                      disabled={!isEdit}
+            <Text style={[styles.smallButtonText, styles.addButtonText]}>
+              + Adicionar
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {fields.length === 0 ? (
+        <View style={styles.emptyBox}>
+          <Text style={styles.emptyText}>Sem exercicios</Text>
+          <Pressable
+            onPress={addExercise}
+            style={[styles.actionButton, styles.primaryButton]}
+          >
+            <Text style={styles.actionButtonText}>Adicionar exercicio</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {fields.map((field, index) => {
+            const fieldErrors = (errors.trains && errors.trains[index]) || {};
+            return (
+              <View key={field.id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Exercicio {index + 1}</Text>
+                  <Pressable
+                    disabled={!isEdit}
+                    style={[
+                      styles.linkButton,
+                      !isEdit && styles.linkButtonDisabled,
+                    ]}
+                    onPress={() => confirmDelete(index)}
+                  >
+                    <Text
                       style={[
-                        styles.linkButton,
-                        !isEdit && styles.linkButtonDisabled,
+                        styles.linkButtonText,
+                        !isEdit && styles.linkButtonTextDisabled,
                       ]}
-                      onPress={() => confirmDelete(index)}
                     >
-                      <Text
-                        style={[
-                          styles.linkButtonText,
-                          !isEdit && styles.linkButtonTextDisabled,
-                        ]}
-                      >
-                        Remover
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  <Controller
-                    control={control}
-                    name={`trains.${index}.name` as const}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nome</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            fieldErrors?.name && styles.inputError,
-                            !isEdit && styles.inputDisabled,
-                          ]}
-                          placeholder="Nome do exercicio"
-                          onBlur={onBlur}
-                          editable={isEdit}
-                          value={value ?? ""}
-                          onChangeText={onChange}
-                        />
-                        {isEdit && fieldErrors?.name && (
-                          <Text style={styles.errorText}>
-                            Campo obrigatorio
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`trains.${index}.reps` as const}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Repeticoes</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            fieldErrors?.reps && styles.inputError,
-                            !isEdit && styles.inputDisabled,
-                          ]}
-                          placeholder="0"
-                          keyboardType="numeric"
-                          onBlur={onBlur}
-                          editable={isEdit}
-                          value={value?.toString() ?? ""}
-                          onChangeText={(text) =>
-                            onChange(text === "" ? null : Number(text))
-                          }
-                        />
-                        {isEdit && fieldErrors?.reps && (
-                          <Text style={styles.errorText}>
-                            Campo obrigatorio
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`trains.${index}.series` as const}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Series</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            fieldErrors?.series && styles.inputError,
-                            !isEdit && styles.inputDisabled,
-                          ]}
-                          placeholder="0"
-                          keyboardType="numeric"
-                          onBlur={onBlur}
-                          editable={isEdit}
-                          value={value?.toString() ?? ""}
-                          onChangeText={(text) =>
-                            onChange(text === "" ? null : Number(text))
-                          }
-                        />
-                        {isEdit && fieldErrors?.series && (
-                          <Text style={styles.errorText}>
-                            Campo obrigatorio
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`trains.${index}.weightActual` as const}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Peso atual (kg)</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            fieldErrors?.weightActual && styles.inputError,
-                            !isEdit && styles.inputDisabled,
-                          ]}
-                          placeholder="0"
-                          keyboardType="numeric"
-                          onBlur={onBlur}
-                          editable={isEdit}
-                          value={value?.toString() ?? ""}
-                          onChangeText={(text) =>
-                            onChange(text === "" ? null : Number(text))
-                          }
-                        />
-                        {isEdit && fieldErrors?.weightActual && (
-                          <Text style={styles.errorText}>
-                            Campo obrigatorio
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`trains.${index}.weightBefore` as const}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Peso anterior (kg)</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            fieldErrors?.weightBefore && styles.inputError,
-                            !isEdit && styles.inputDisabled,
-                          ]}
-                          placeholder="0"
-                          keyboardType="numeric"
-                          onBlur={onBlur}
-                          editable={isEdit}
-                          value={value?.toString() ?? ""}
-                          onChangeText={(text) =>
-                            onChange(text === "" ? null : Number(text))
-                          }
-                        />
-                        {isEdit && fieldErrors?.weightBefore && (
-                          <Text style={styles.errorText}>
-                            Campo obrigatorio
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`trains.${index}.observations` as const}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Observacoes</Text>
-                        <TextInput
-                          style={[
-                            styles.textArea,
-                            !isEdit && styles.inputDisabled,
-                          ]}
-                          placeholder="Observacoes"
-                          multiline
-                          numberOfLines={4}
-                          onBlur={onBlur}
-                          editable={isEdit}
-                          value={value ?? ""}
-                          onChangeText={onChange}
-                        />
-                      </View>
-                    )}
-                  />
+                      Remover
+                    </Text>
+                  </Pressable>
                 </View>
-              );
-            })}
-          </ScrollView>
-        )}
 
+                <Controller
+                  control={control}
+                  name={`trains.${index}.name` as const}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Nome</Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          fieldErrors?.name && styles.inputError,
+                          !isEdit && styles.inputDisabled,
+                        ]}
+                        placeholder="Nome do exercicio"
+                        onBlur={onBlur}
+                        editable={isEdit}
+                        value={value ?? ""}
+                        onChangeText={onChange}
+                      />
+                      {isEdit && fieldErrors?.name && (
+                        <Text style={styles.errorText}>Campo obrigatorio</Text>
+                      )}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`trains.${index}.reps` as const}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Repeticoes</Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          fieldErrors?.reps && styles.inputError,
+                          !isEdit && styles.inputDisabled,
+                        ]}
+                        placeholder="0"
+                        keyboardType="numeric"
+                        onBlur={onBlur}
+                        editable={isEdit}
+                        value={value?.toString() ?? ""}
+                        onChangeText={(text) =>
+                          onChange(text === "" ? null : Number(text))
+                        }
+                      />
+                      {isEdit && fieldErrors?.reps && (
+                        <Text style={styles.errorText}>Campo obrigatorio</Text>
+                      )}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`trains.${index}.series` as const}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Series</Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          fieldErrors?.series && styles.inputError,
+                          !isEdit && styles.inputDisabled,
+                        ]}
+                        placeholder="0"
+                        keyboardType="numeric"
+                        onBlur={onBlur}
+                        editable={isEdit}
+                        value={value?.toString() ?? ""}
+                        onChangeText={(text) =>
+                          onChange(text === "" ? null : Number(text))
+                        }
+                      />
+                      {isEdit && fieldErrors?.series && (
+                        <Text style={styles.errorText}>Campo obrigatorio</Text>
+                      )}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`trains.${index}.weightActual` as const}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Peso atual (kg)</Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          fieldErrors?.weightActual && styles.inputError,
+                          !isEdit && styles.inputDisabled,
+                        ]}
+                        placeholder="0"
+                        keyboardType="numeric"
+                        onBlur={onBlur}
+                        editable={isEdit}
+                        value={value?.toString() ?? ""}
+                        onChangeText={(text) =>
+                          onChange(text === "" ? null : Number(text))
+                        }
+                      />
+                      {isEdit && fieldErrors?.weightActual && (
+                        <Text style={styles.errorText}>Campo obrigatorio</Text>
+                      )}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`trains.${index}.weightBefore` as const}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Peso anterior (kg)</Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          fieldErrors?.weightBefore && styles.inputError,
+                          !isEdit && styles.inputDisabled,
+                        ]}
+                        placeholder="0"
+                        keyboardType="numeric"
+                        onBlur={onBlur}
+                        editable={isEdit}
+                        value={value?.toString() ?? ""}
+                        onChangeText={(text) =>
+                          onChange(text === "" ? null : Number(text))
+                        }
+                      />
+                      {isEdit && fieldErrors?.weightBefore && (
+                        <Text style={styles.errorText}>Campo obrigatorio</Text>
+                      )}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`trains.${index}.observations` as const}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Observacoes</Text>
+                      <TextInput
+                        style={[
+                          styles.textArea,
+                          !isEdit && styles.inputDisabled,
+                        ]}
+                        placeholder="Observacoes"
+                        multiline
+                        numberOfLines={4}
+                        onBlur={onBlur}
+                        editable={isEdit}
+                        value={value ?? ""}
+                        onChangeText={onChange}
+                      />
+                    </View>
+                  )}
+                />
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {isEdit && (
         <View style={styles.footerRow}>
           <Pressable
             style={[styles.actionButton, styles.secondaryButton]}
@@ -402,7 +376,7 @@ export function TrainScreen({ context }: Props) {
             </Text>
           </Pressable>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      )}
+    </View>
   );
 }
