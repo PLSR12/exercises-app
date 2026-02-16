@@ -1,0 +1,137 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#475569",
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 12,
+  },
+  summaryCard: {
+    flexBasis: "48%",
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  primaryCard: {
+    backgroundColor: "#0f62fe",
+    borderColor: "#0f62fe",
+  },
+  summaryLabel: {
+    color: "#475569",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  summaryValue: {
+    color: "#0f172a",
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  listContent: {
+    paddingBottom: 16,
+  },
+  contextCard: {
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  contextHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  contextTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  contextBadge: {
+    backgroundColor: "#e2e8f0",
+    color: "#0f172a",
+    fontWeight: "700",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  statRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  statPill: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  statLabel: {
+    color: "#475569",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  statValue: {
+    color: "#0f172a",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  footerRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  primaryButton: {
+    backgroundColor: "#0f62fe",
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    backgroundColor: "#e2e8f0",
+  },
+  actionButtonText: {
+    color: "#0f172a",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+});
